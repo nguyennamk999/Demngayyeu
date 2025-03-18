@@ -1,94 +1,123 @@
-var canvas = document.querySelector("canvas"),
-ctx = canvas.getContext("2d");
+var c = document.getElementById("c");
+var ctx = c.getContext("2d");
 
-var ww, wh;
+var cw = (c.width = window.innerWidth),
+  cx = cw / 2;
+var ch = (c.height = window.innerHeight),
+  cy = ch / 2;
 
-function onResize() {
-  ww = canvas.width = window.innerWidth;
-  wh = canvas.height = window.innerHeight;
-}
-
+var rad = Math.PI / 180;
+var stopped = true;
+var howMany = 100;
+var Circles = [];
 ctx.strokeStyle = "red";
-ctx.shadowBlur = 25;
-ctx.shadowColor = "hsla(0, 100.00%, 86.30%, 0.50))";
+ctx.fillStyle = "rgba(255, 239, 239, 0.8)";
+ctx.globalAlpha = 0.75;
 
-var precision = 100;
-var hearts = [];
-var mouseMoved = false;
-function onMove(e) {
-  mouseMoved = true;
-  if (e.type === "touchmove") {
-    hearts.push(new Heart(e.touches[0].clientX, e.touches[0].clientY));
-    hearts.push(new Heart(e.touches[0].clientX, e.touches[0].clientY));
-  } else
-  {
-    hearts.push(new Heart(e.clientX, e.clientY));
-    hearts.push(new Heart(e.clientX, e.clientY));
-  }
+function Circle() {
+  this.R = randomIntFromInterval(50, 200);
+  this.X = randomIntFromInterval(this.R, cw - this.R);
+  this.Y = randomIntFromInterval(this.R, ch - this.R);
+  this.iX = 2 * Math.random() * (Math.random() < 0.5 ? -1 : 1); //positive or negative
+  this.iY = 2 * Math.random() * (Math.random() < 0.5 ? -1 : 1); //positive or negative
+
+  this.r = randomIntFromInterval(5, 50);
+  this.r1 = randomIntFromInterval(this.R / 2, this.R);
+
+  this.a = ~~(Math.random() * 360) + 1;
+  this.x = this.X + this.r1 * Math.cos(this.a * rad);
+  this.y = this.Y + this.r1 * Math.sin(this.a * rad);
+  this.l = randomIntFromInterval(50, 80);
 }
 
-var Heart = function (x, y) {
-  this.x = x || Math.random() * ww;
-  this.y = y || Math.random() * wh;
-  this.size = Math.random() * 2 + 1;
-  this.shadowBlur = Math.random() * 10;
-  this.speedX = (Math.random() + 0.2 - 0.6) * 8;
-  this.speedY = (Math.random() + 0.2 - 0.6) * 8;
-  this.speedSize = Math.random() * 0.05 + 0.01;
-  this.opacity = 1;
-  this.vertices = [];
-  for (var i = 0; i < precision; i++) {
-    var step = (i / precision - 0.5) * (Math.PI * 2);
-    var vector = {
-      x: 15 * Math.pow(Math.sin(step), 3),
-      y: -(13 * Math.cos(step) - 5 * Math.cos(2 * step) - 2 * Math.cos(3 * step) - Math.cos(4 * step)) };
+for (var i = 0; i < howMany; i++) {
+  var circle = new Circle();
+  Circles.push(circle);
+}
 
-    this.vertices.push(vector);
-  }
-};
+function Draw() {
+  ctx.fillRect(0, 0, cw, ch);
 
-Heart.prototype.draw = function () {
-  this.size -= this.speedSize;
-  this.x += this.speedX;
-  this.y += this.speedY;
-  ctx.save();
-  ctx.translate(-1000, this.y);
-  ctx.scale(this.size, this.size);
-  ctx.beginPath();
-  for (var i = 0; i < precision; i++) {
-    var vector = this.vertices[i];
-    ctx.lineTo(vector.x, vector.y);
-  }
-  ctx.globalAlpha = this.size;
-  ctx.shadowBlur = Math.round((3 - this.size) * 10);
-  ctx.shadowColor = "hsla(0, 91.70%, 66.90%, 0.50)";
-  ctx.shadowOffsetX = this.x + 1000;
-  ctx.globalCompositeOperation = "screen";
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-};
-
-
-function render(a) {
-  requestAnimationFrame(render);
-
-  hearts.push(new Heart());
-  ctx.clearRect(0, 0, ww, wh);
-  for (var i = 0; i < hearts.length; i++) {
-    hearts[i].draw();
-    if (hearts[i].size <= 0) {
-      hearts.splice(i, 1);
-      i--;
+  for (var i = 0; i < Circles.length; i++) {
+    var p = Circles[i];
+    if (p.X < p.R || p.X > cw - p.R || p.Y < p.R || p.Y > ch - p.R) {
+      p.iX *= -1;
+      p.iY *= -1;
     }
+
+    p.X += p.iX;
+    p.Y += p.iY;
+    p.a += 1;
+    p.x = p.X + p.r1 * Math.cos(p.a * rad);
+    p.y = p.Y + p.r1 * Math.sin(p.a * rad);
+    p.gx = p.x + p.r * Math.cos(p.a * rad);
+    p.gy = p.y + p.r * Math.sin(p.a * rad);
+
+    ctx.save();
+
+    ctx.fillStyle = Grd(p.gx, p.gy, p.r, p.l);
+
+    heart(p.x, p.y, p.r, p.a);
+    ctx.restore();
   }
+  requestId = window.requestAnimationFrame(Draw);
 }
 
-onResize();
-window.addEventListener("mousemove", onMove);
-window.addEventListener("touchmove", onMove);
-window.addEventListener("resize", onResize);
-requestAnimationFrame(render);
+function randomIntFromInterval(mn, mx) {
+  return ~~(Math.random() * (mx - mn + 1) + mn);
+}
+
+function Grd(x, y, r, l) {
+  grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+  grd.addColorStop(0, "hsla(0, 99%," + l + "%,.9)");
+  grd.addColorStop(1, "hsla(0, 99%," + l + "%, 0.1)");
+  return grd;
+}
+
+function heart(x, y, r, a) {
+  ctx.beginPath();
+  var x1 = x + r * Math.cos(a * rad);
+  var y1 = y + r * Math.sin(a * rad);
+  var cx1 = x + r * Math.cos((a + 22.5) * rad);
+  var cy1 = y + r * Math.sin((a + 22.5) * rad);
+
+  var cx2 = x + r * Math.cos((a - 22.5) * rad);
+  var cy2 = y + r * Math.sin((a - 22.5) * rad);
+  var chord = 2 * r * Math.sin((22.5 * rad) / 2);
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.arc(cx1, cy1, chord, (270 + a) * rad, (270 + a + 225) * rad);
+  ctx.lineTo(x, y);
+  ctx.moveTo(x1, y1);
+  ctx.arc(cx2, cy2, chord, (90 + a) * rad, (90 + a + 135) * rad, true);
+  ctx.lineTo(x, y);
+
+  ctx.fillStyle = "#f8b5b5"; 
+  ctx.fill();
+}
+
+function start() {
+  requestId = window.requestAnimationFrame(Draw);
+  stopped = false;
+}
+
+function stopAnim() {
+  if (requestId) {
+    window.cancelAnimationFrame(requestId);
+  }
+  stopped = true;
+}
+
+window.addEventListener("load", start(), false);
+c.addEventListener(
+  "click",
+  function () {
+    stopped == true ? start() : stopAnim();
+  },
+  false
+);
+
 
 function playAudio() {
   var audio = document.getElementById("myAudio");
